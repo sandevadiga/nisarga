@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 
 type Product = {
@@ -19,8 +19,11 @@ export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [form, setForm] = useState(EMPTY);
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   async function fetchProducts() {
     const res = await fetch("/api/products");
@@ -32,6 +35,29 @@ export default function ProductsPage() {
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+  }
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImagePreview(URL.createObjectURL(file));
+    setUploading(true);
+    setError("");
+
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch("/api/upload", { method: "POST", body: fd });
+    setUploading(false);
+
+    if (!res.ok) {
+      const d = await res.json();
+      setError(d.error ?? "Image upload failed");
+      setImagePreview(null);
+      return;
+    }
+    const { url } = await res.json();
+    setForm((f) => ({ ...f, imageUrl: url }));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -57,6 +83,8 @@ export default function ProductsPage() {
       return;
     }
     setForm(EMPTY);
+    setImagePreview(null);
+    if (fileRef.current) fileRef.current.value = "";
     setShowForm(false);
     fetchProducts();
   }
@@ -102,9 +130,39 @@ export default function ProductsPage() {
                 className="w-full px-3 py-2 rounded-lg border border-zinc-300 text-sm text-zinc-900 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-900" />
             </div>
             <div className="col-span-2">
-              <label className="block text-xs font-medium text-zinc-600 mb-1">Image URL *</label>
-              <input name="imageUrl" required value={form.imageUrl} onChange={handleChange} placeholder="https://..."
-                className="w-full px-3 py-2 rounded-lg border border-zinc-300 text-sm text-zinc-900 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-900" />
+              <label className="block text-xs font-medium text-zinc-600 mb-1">Product Image *</label>
+              <div
+                className="relative border-2 border-dashed border-zinc-300 rounded-lg p-4 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-zinc-500 transition-colors bg-zinc-50"
+                onClick={() => fileRef.current?.click()}
+              >
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
+                {imagePreview ? (
+                  <div className="relative w-full h-36">
+                    <Image src={imagePreview} alt="Preview" fill className="object-contain rounded" unoptimized />
+                    {uploading && (
+                      <div className="absolute inset-0 bg-white/70 flex items-center justify-center rounded text-xs text-zinc-500">
+                        Uploading…
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <div className="text-2xl text-zinc-400">📷</div>
+                    <p className="text-xs text-zinc-500">Click to choose an image</p>
+                    <p className="text-xs text-zinc-400">JPEG, PNG, WebP, GIF — max 5 MB</p>
+                  </>
+                )}
+              </div>
+              {form.imageUrl && !uploading && (
+                <p className="text-xs text-green-600 mt-1">Image uploaded successfully</p>
+              )}
+              <input type="hidden" name="imageUrl" value={form.imageUrl} required />
             </div>
             <div className="col-span-2">
               <label className="block text-xs font-medium text-zinc-600 mb-1">Description *</label>
@@ -113,9 +171,9 @@ export default function ProductsPage() {
             </div>
             {error && <p className="col-span-2 text-xs text-red-500">{error}</p>}
             <div className="col-span-2 flex justify-end">
-              <button type="submit" disabled={loading}
+              <button type="submit" disabled={loading || uploading}
                 className="px-6 py-2 bg-zinc-900 text-white rounded-lg text-sm font-medium hover:bg-zinc-700 disabled:opacity-50 transition-colors">
-                {loading ? "Saving…" : "Save Product"}
+                {loading ? "Saving…" : uploading ? "Uploading image…" : "Save Product"}
               </button>
             </div>
           </form>
