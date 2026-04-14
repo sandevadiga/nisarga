@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link"; // added to hint them to go to history
 
 type Product = {
   id: string;
@@ -21,6 +22,7 @@ type Location = {
 type Allocation = {
   id: string;
   quantity: number;
+  completedQty: number;
   allocatedAt: string;
   product: { id: string; name: string; size: string; imageUrl: string };
   location: { id: string; name: string };
@@ -83,10 +85,65 @@ export default function ManagerPage() {
     load();
   }
 
+  async function handleMarkComplete(id: string, currentCompleted: number, total: number) {
+    const remaining = total - currentCompleted;
+    if (remaining <= 0) return;
+
+    const input = window.prompt(`How many items have been processed/completed?\nRemaining to complete: ${remaining}`, remaining.toString());
+    if (!input) return;
+
+    const qty = parseInt(input, 10);
+    if (isNaN(qty) || qty <= 0 || qty > remaining) {
+      alert("Invalid quantity. Must be between 1 and " + remaining);
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/allocations/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "COMPLETE", additionalCompletedQty: qty })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      alert("Successfully marked as completed.");
+      load();
+    } catch (e: any) {
+      alert(e.message);
+    }
+  }
+
+  async function handleEditQuantity(id: string, currentTotal: number) {
+    const input = window.prompt("Edit allocated quantity (Warning: this alters total product stock limits):", currentTotal.toString());
+    if (!input) return;
+
+    const qty = parseInt(input, 10);
+    if (isNaN(qty) || qty <= 0) {
+      alert("Invalid quantity. Must be at least 1.");
+      return;
+    }
+
+    if (qty === currentTotal) return;
+
+    try {
+      const res = await fetch(`/api/allocations/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "EDIT", quantity: qty })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      alert("Successfully edited allocation quantity.");
+      load();
+    } catch (e: any) {
+      alert(e.message);
+    }
+  }
+
   const maxQty = selectedProduct?.availableQty ?? 0;
 
   return (
-    <div className="p-4 sm:p-8 lg:p-10">
+    <div className="p-4 sm:p-8 lg:p-10 pb-32">
       <div className="mb-8">
         <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Allocate Stock</h2>
         <p className="text-slate-500 text-sm mt-1">Assign product quantities to a store location</p>
@@ -211,26 +268,82 @@ export default function ManagerPage() {
 
         {/* Right: recent allocations */}
         <div className="bg-white rounded-2xl border border-slate-200/60 p-5 sm:p-6 shadow-sm h-fit">
-          <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4 flex items-center gap-2">
-            <span className="text-base">🕓</span> Recent Allocations
-          </h3>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+              <span className="text-base">🕓</span> Active Workflow
+            </h3>
+            <Link href="/manager/history" className="text-xs font-bold text-emerald-600 hover:text-emerald-700 hover:underline">
+              View All 
+            </Link>
+          </div>
           {recentAllocations.length === 0 ? (
             <p className="text-sm text-slate-400">No allocations yet.</p>
           ) : (
-            <div className="space-y-3">
-              {recentAllocations.map((a) => (
-                <div key={a.id} className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
-                  <div className="relative w-9 h-9 rounded-lg overflow-hidden bg-slate-200 shrink-0 mt-0.5">
-                    <Image src={a.product.imageUrl} alt={a.product.name} fill className="object-cover" unoptimized />
+            <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
+              {recentAllocations.map((a) => {
+                const diffMs = Date.now() - new Date(a.allocatedAt).getTime();
+                const isEditable = diffMs <= 5 * 60 * 1000;
+                const isFullyCompleted = a.completedQty >= a.quantity;
+                const progressPerc = Math.max(0, Math.min(100, (a.completedQty / a.quantity) * 100));
+
+                return (
+                  <div key={a.id} className="p-4 rounded-xl bg-slate-50 border border-slate-100 flex flex-col gap-3">
+                    <div className="flex items-start gap-3">
+                      <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-white border border-slate-200 shrink-0 mt-0.5">
+                        <Image src={a.product.imageUrl} alt={a.product.name} fill className="object-cover" unoptimized />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-bold text-slate-900 truncate">{a.product.name}</p>
+                        <p className="text-[10px] sm:text-xs text-slate-500 font-medium">📍 {a.location.name}</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">{new Date(a.allocatedAt).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1 w-full bg-white p-2 rounded-lg border border-slate-100">
+                      <div className="flex items-center justify-between text-[10px] font-bold px-1">
+                        <span className={isFullyCompleted ? "text-emerald-600" : "text-amber-600"}>
+                          {a.completedQty} / {a.quantity}
+                        </span>
+                        <span className="text-slate-400 uppercase tracking-widest text-[8px]">{isFullyCompleted ? 'READY' : 'IN PROGRESS'}</span>
+                      </div>
+                      <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                        <div 
+                          className={`h-full rounded-full transition-all duration-500 ${isFullyCompleted ? "bg-emerald-500" : "bg-amber-400"}`}
+                          style={{ width: `${progressPerc}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 mt-1">
+                      <button
+                        onClick={() => handleMarkComplete(a.id, a.completedQty, a.quantity)}
+                        disabled={isFullyCompleted}
+                        className="flex-1 py-1.5 text-[10px] font-bold rounded-lg border border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors disabled:opacity-40 disabled:border-slate-200 disabled:text-slate-500 disabled:bg-slate-50 text-center shadow-sm"
+                      >
+                        {isFullyCompleted ? "Completed" : "Log Progress"}
+                      </button>
+
+                      {isEditable ? (
+                        <button
+                          onClick={() => handleEditQuantity(a.id, a.quantity)}
+                          className="px-3 py-1.5 text-[10px] font-bold rounded-lg border border-slate-200 text-indigo-600 hover:bg-indigo-50 transition-colors shadow-sm bg-white shrink-0"
+                          title="Edit quantity (only available within 5 mins of creation)"
+                        >
+                          ✏️ Edit Qty
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => alert("Time limit exceeded. Please contact Admin to do it.")}
+                          className="px-3 py-1.5 text-[10px] font-bold rounded-lg border border-slate-100 text-slate-400 hover:bg-slate-50 transition-colors bg-white shrink-0"
+                        >
+                          🔒 Locked
+                        </button>
+                      )}
+                    </div>
+
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold text-slate-900 truncate">{a.product.name}</p>
-                    <p className="text-xs text-slate-500">{a.quantity} units → {a.location.name}</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">{a.manager.name} · {new Date(a.allocatedAt).toLocaleDateString()}</p>
-                  </div>
-                  <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full shrink-0">{a.quantity}</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

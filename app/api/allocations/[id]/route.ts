@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getSession();
     if (!session || (session.role !== "MANAGER" && session.role !== "ADMIN")) {
@@ -11,7 +11,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
     const body = await req.json();
     const { action } = body;
-    const { id } = params;
+    const { id } = await params;
 
     if (action === "COMPLETE") {
       const { additionalCompletedQty } = body;
@@ -20,7 +20,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       if (!allocation) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
       // We allow them to pass additional completed items, or explicitly just calculate the total bounds
-      const newTotal = allocation.completedQty + (parseInt(additionalCompletedQty, 10) || 0);
+      const newTotal = (allocation.completedQty || 0) + (parseInt(additionalCompletedQty, 10) || 0);
 
       if (newTotal > allocation.quantity) {
          return NextResponse.json({ error: "Cannot complete more than allocated quantity" }, { status: 400 });
