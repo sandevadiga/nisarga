@@ -44,9 +44,10 @@ model Location {
 }
 
 model Allocation {
-  id          String   @id @default(cuid())
-  quantity    Int
-  allocatedAt DateTime @default(now())
+  id           String   @id @default(cuid())
+  quantity     Int
+  completedQty Int      @default(0)
+  allocatedAt  DateTime @default(now())
 
   product     Product  @relation(fields: [productId], references: [id])
   productId   String

@@ -40,6 +40,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <Link href="/admin/locations" className="group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 transition-all duration-200">
             <span className="text-xl transform group-hover:scale-110 transition-transform">📍</span> Locations
           </Link>
+          <Link href="/admin/allocations" className="group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 transition-all duration-200">
+            <span className="text-xl transform group-hover:scale-110 transition-transform">🕓</span> History
+          </Link>
         </nav>
         <div className="px-4 py-6 border-t border-slate-100 bg-slate-50/50">
           <LogoutButton />
@@ -55,20 +58,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </main>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-slate-200/60 px-6 py-3 pb-safe z-40 flex items-center justify-between shadow-[0_-4px_24px_rgba(0,0,0,0.06)]">
-        <Link href="/admin" className="flex flex-col items-center gap-1 p-2 text-slate-500 hover:text-indigo-600 transition-colors">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-slate-200/60 px-4 py-3 pb-safe z-40 flex items-center justify-between shadow-[0_-4px_24px_rgba(0,0,0,0.06)] overflow-x-auto">
+        <Link href="/admin" className="flex flex-col items-center gap-1 p-2 text-slate-500 hover:text-indigo-600 transition-colors mx-1">
           <span className="text-2xl">📊</span>
           <span className="text-[10px] font-semibold uppercase tracking-wider">Home</span>
         </Link>
-        <Link href="/admin/products" className="flex flex-col items-center gap-1 p-2 text-slate-500 hover:text-indigo-600 transition-colors relative">
+        <Link href="/admin/locations" className="flex flex-col items-center gap-1 p-2 text-slate-500 hover:text-indigo-600 transition-colors mx-1">
+          <span className="text-2xl">📍</span>
+          <span className="text-[10px] font-semibold uppercase tracking-wider">Store</span>
+        </Link>
+        <Link href="/admin/products" className="flex flex-col items-center gap-1 p-2 text-slate-500 hover:text-indigo-600 transition-colors relative mx-2">
           <div className="absolute -top-6 bg-gradient-to-r from-indigo-600 to-indigo-500 text-white w-12 h-12 rounded-full flex items-center justify-center text-2xl shadow-lg shadow-indigo-500/30 border-4 border-slate-50 transform hover:-translate-y-1 transition-transform">
             📦
           </div>
           <span className="text-[10px] font-semibold uppercase tracking-wider mt-5">Products</span>
         </Link>
-        <Link href="/admin/locations" className="flex flex-col items-center gap-1 p-2 text-slate-500 hover:text-indigo-600 transition-colors">
-          <span className="text-2xl">📍</span>
-          <span className="text-[10px] font-semibold uppercase tracking-wider">Places</span>
+        <Link href="/admin/allocations" className="flex flex-col items-center gap-1 p-2 text-slate-500 hover:text-indigo-600 transition-colors mx-1">
+          <span className="text-2xl">🕓</span>
+          <span className="text-[10px] font-semibold uppercase tracking-wider">Log</span>
         </Link>
       </nav>
     </div>

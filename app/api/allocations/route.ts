@@ -2,12 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+    const managerId = req.nextUrl.searchParams.get("managerId");
+    const locationId = req.nextUrl.searchParams.get("locationId");
+    const productId = req.nextUrl.searchParams.get("productId");
+
+    const where: any = {};
+    if (managerId) where.managerId = managerId;
+    if (locationId) where.locationId = locationId;
+    if (productId) where.productId = productId;
+
     const allocations = await prisma.allocation.findMany({
+      where,
       orderBy: { allocatedAt: "desc" },
       include: {
         product: { select: { id: true, name: true, size: true, imageUrl: true } },
