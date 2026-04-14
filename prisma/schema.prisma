@@ -25,6 +25,8 @@ model User {
 model Product {
   id               String       @id @default(cuid())
   name             String
+  size             String
+  description      String
   imageUrl         String
   price            Float
   totalQty         Int
