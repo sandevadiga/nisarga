@@ -9,6 +9,7 @@ export type SessionPayload = {
 };
 
 const secretKey = process.env.SESSION_SECRET;
+if (!secretKey) throw new Error("SESSION_SECRET is not set in .env.local");
 const encodedKey = new TextEncoder().encode(secretKey);
 
 export async function encrypt(payload: SessionPayload) {
